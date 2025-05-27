@@ -1,8 +1,8 @@
 # Set the paths for the image directories
-image_path = '/content/images/all'
-train_path = '/content/images/train'
-val_path = '/content/images/validation'
-test_path = '/content/images/test'
+image_path = '/content/datasets/all'
+train_path = '/content/datasets/train'
+val_path = '/content/datasets/validation'
+test_path = '/content/datasets/test'
 
 # Gather all image files with different extensions from the source folder
 jpeg_file_list = [path for path in Path(image_path).rglob('*.jpeg')]
