@@ -28,7 +28,6 @@ def write_metadata(model_path, labelmap_path, output_path):
 
     # Save model with metadata
     writer_utils.save_file(writer.populate(), output_path)
-    print(f"✅ Metadata saved to: {output_path}")
 
 if __name__ == "__main__":
     write_metadata(model_path, labelmap_path, output_path)
