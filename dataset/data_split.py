@@ -6,10 +6,10 @@ import os
 import sys
 
 # Set the paths for the image directories
-image_path = '/content/datasets/all'
-train_path = '/content/datasets/train'
-val_path = '/content/datasets/validation'
-test_path = '/content/datasets/test'
+image_path = '/content/dataset/all'
+train_path = '/content/dataset/train'
+val_path = '/content/dataset/validation'
+test_path = '/content/dataset/test'
 
 # Gather all image files with different extensions from the source folder
 jpeg_file_list = [path for path in Path(image_path).rglob('*.jpeg')]
