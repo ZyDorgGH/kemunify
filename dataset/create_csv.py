@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 def convert_xml_to_csv(folder_path):
     xml_list = []
-    for xml_file in glob.glob(path + '/*.xml'):
+    for xml_file in glob.glob(folder_path + '/*.xml'):
         tree = ET.parse(xml_file)
         root = tree.getroot()
 
