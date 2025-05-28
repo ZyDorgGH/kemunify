@@ -6,37 +6,31 @@ import glob
 import pandas as pd
 import xml.etree.ElementTree as ET
 
-def convert_xml_to_csv(folder_path):
+def xml_to_csv(path):
     xml_list = []
-    for xml_file in glob.glob(folder_path + '/*.xml'):
+    for xml_file in glob.glob(path + '/*.xml'):
         tree = ET.parse(xml_file)
         root = tree.getroot()
+        for member in root.findall('object'):
+            value = (root.find('filename').text,
+                     int(root.find('size')[0].text),
+                     int(root.find('size')[1].text),
+                     member[0].text,
+                     int(member[4][0].text),
+                     int(member[4][1].text),
+                     int(member[4][2].text),
+                     int(member[4][3].text)
+                     )
+            xml_list.append(value)
+    column_name = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
+    xml_df = pd.DataFrame(xml_list, columns=column_name)
+    return xml_df
 
-        for obj in root.findall('object'):
-            filename = root.find('filename').text
-            width = int(root.find('size/width').text)
-            height = int(root.find('size/height').text)
-            label = obj.find('name').text
-            bbox = obj.find('bndbox')
-            xmin = int(bbox.find('xmin').text)
-            ymin = int(bbox.find('ymin').text)
-            xmax = int(bbox.find('xmax').text)
-            ymax = int(bbox.find('ymax').text)
+def main():
+    for folder in ['train','validation']:
+        image_path = os.path.join(os.getcwd(), ('images/' + folder))
+        xml_df = xml_to_csv(image_path)
+        xml_df.to_csv(('images/' + folder + '_labels.csv'), index=None)
+        print('Successfully converted xml to csv.')
 
-            records.append((filename, width, height, label, xmin, ymin, xmax, ymax))
-
-    columns = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
-    return pd.DataFrame(records, columns=columns)
-
-def run_conversion():
-    folders = ['train', 'validation']
-    base_path = os.path.join(os.getcwd(), 'images')
-
-    for folder in folders:
-        folder_path = os.path.join(base_path, folder)
-        csv_data = convert_xml_to_csv(folder_path)
-        csv_output = os.path.join(base_path, f'{folder}_labels.csv')
-        csv_data.to_csv(csv_output, index=False)
-        print(f'Data from {folder} folder has been saved to CSV.')
-
-run_conversion()
+main()
