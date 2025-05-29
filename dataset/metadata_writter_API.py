@@ -4,9 +4,9 @@ from tflite_support.metadata_writers import object_detector
 from tflite_support.metadata_writers import writer_utils
 
 # === Hardcoded paths ===
-model_path = "custom_model_lite/model.tflite"
+model_path = "kemunify_model/kemunify_mobilnet_model.tflite"
 labelmap_path = "labelmap.txt"
-output_path = "custom_model_lite/model_metadata.tflite"
+output_path = "kemunify_model/kemunify_mobilnet_model_metadata.tflite"
 
 # === Normalization constants ===
 _INPUT_NORM_MEAN = 127.5
