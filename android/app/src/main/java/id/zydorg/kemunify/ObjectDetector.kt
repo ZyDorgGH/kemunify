@@ -83,7 +83,7 @@ class ObjectDetectorHelper(
                 tensorImage.width
             )
 
-            Log.e("ObjectDetected", "Object detected: $results")
+            Log.d("ObjectDetected", "Object detected: $results")
         }
     }
     companion object {

@@ -1,10 +1,14 @@
 package id.zydorg.kemunify.ui.screen.home
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -23,6 +27,8 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
@@ -44,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +65,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.auth.api.identity.Identity
+import id.zydorg.kemunify.GoogleDriveUploader
 import id.zydorg.kemunify.MainApplication
 import id.zydorg.kemunify.data.factory.ViewModelFactory
 import id.zydorg.kemunify.ui.theme.DarkGreen
@@ -67,6 +78,8 @@ import id.zydorg.kemunify.ui.theme.WhiteSmoke
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -84,6 +97,7 @@ fun HomeScreen(
     var showDeleteAllDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var customerToDelete by remember { mutableStateOf<String?>(null) }
+    var userEmail by remember { mutableStateOf<String?>(null) }
     var expandedActionMenu by remember { mutableStateOf(false) }
     var expandedListMore by remember { mutableStateOf(false) }
 
@@ -106,6 +120,34 @@ fun HomeScreen(
             }
         }
     }
+
+    val authorizationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null){
+            val authorizationResult = Identity.getAuthorizationClient(context)
+                .getAuthorizationResultFromIntent(result.data!!)
+
+            Toast.makeText(context, "Permission Granted first", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Permission failed", Toast.LENGTH_SHORT).show()
+        }
+
+    }
+
+    LaunchedEffect(Unit) {
+        userEmail = viewModel.getData("email")
+    }
+
+    LaunchedEffect(userEmail) {
+        if (!userEmail.isNullOrEmpty()) {
+            Log.d("userEmail", "userEmail: $userEmail")
+            viewModel.requestDriveAuthorization(context, authorizationLauncher)
+        }
+    }
+
+    val credentialManager = CredentialManager.create(context)
+
 
     Scaffold(
         topBar = {
@@ -131,7 +173,7 @@ fun HomeScreen(
                         }
                         DropdownMenu(expanded = expandedActionMenu, onDismissRequest = { expandedActionMenu = false }) {
                             DropdownMenuItem(
-                                text = { Text("Share Excel") },
+                                text = { Text("Share & Upload Excel") },
                                 enabled = customerState.customer.isNotEmpty(),
                                 onClick = {
                                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
@@ -164,10 +206,55 @@ fun HomeScreen(
                                             isCircularIndicatorShowing = false
                                         }
                                     }
+                                    coroutineScope.launch {
+                                        val file = viewModel.exportToExcel(context)
+                                        if (file != null) {
+                                            GoogleDriveUploader(context).uploadFileToDrive(file)
+                                        } else {
+                                            Toast.makeText(context, "Export failed", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Outlined.Share,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Login") },
+                                onClick = {
+                                    viewModel.signInWithGoogle(
+                                        context = context,
+                                        credentialManager = credentialManager,
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Outlined.Login,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Log Out", color = Color.Red) },
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.deleteData()
+                                        val request = ClearCredentialStateRequest()
+                                        credentialManager.clearCredentialState(request)
+                                        Toast.makeText(
+                                            context,
+                                            "Logout success",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Outlined.Logout,
+                                        tint = Color.Red,
                                         contentDescription = null
                                     )
                                 }
@@ -208,6 +295,7 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
+
             if (isCircularIndicatorShowing) {
                 Box(
                     modifier = Modifier
@@ -378,6 +466,6 @@ fun HomeScreen(
             }
         )
     }
-
-
 }
+
+

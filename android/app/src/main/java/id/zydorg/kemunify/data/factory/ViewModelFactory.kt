@@ -20,6 +20,7 @@ class ViewModelFactory(
 
             modelClass.isAssignableFrom(HomeViewModel::class.java) -> HomeViewModel(
                 injection.userRepository,
+                injection.userPreferencesDataStore
             )
 
             modelClass.isAssignableFrom(DetailViewModel::class.java) -> DetailViewModel(

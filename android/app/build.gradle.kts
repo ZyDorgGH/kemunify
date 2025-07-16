@@ -8,12 +8,13 @@ plugins {
 
 android {
     namespace = "id.zydorg.kemunify"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "id.zydorg.kemunify"
         minSdk = 26
-        targetSdk = 34
+        //noinspection EditedTargetSdkVersion
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -48,7 +49,12 @@ android {
     }
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += setOf(
+                "/META-INF/INDEX.LIST",
+                "/META-INF/AL2.0",
+                "/META-INF/LGPL2.1",
+                "META-INF/DEPENDENCIES"
+            )
         }
     }
 }
@@ -100,10 +106,14 @@ dependencies {
     implementation ("org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.0")
     implementation ("org.tensorflow:tensorflow-lite-gpu:2.13.0")
 
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
-    implementation("com.google.http-client:google-http-client-gson:1.43.3")
-    implementation("com.google.api-client:google-api-client-android:2.2.0")
-    implementation("com.google.apis:google-api-services-drive:v3-rev20240415-2.0.0")
 
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("com.google.http-client:google-http-client-gson:1.43.3")
+    implementation("com.google.api-client:google-api-client-android:2.7.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20240914-2.0.0")
+
+    implementation("androidx.credentials:credentials:1.5.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
 }
