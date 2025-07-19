@@ -89,12 +89,4 @@ class WasteViewModel(
             }
         }
     }
-
-
-    fun deleteWaste(id: Int){
-        viewModelScope.launch {
-            wasteRepository.deleteWaste(id)
-        }
-    }
-
 }

@@ -11,7 +11,7 @@ sealed class Screen(val route: String){
     object AddWaste : Screen("add")
     object Camera : Screen("camera")
     object Detect : Screen("detect?photo={photo}"){
-        fun takePhoto(photo: kotlin.String) = "detect?photo=${Uri.encode(photo)}"
+        fun takePhoto(photo: String) = "detect?photo=${Uri.encode(photo)}"
     }
     object Profile : Screen("profile")
 }

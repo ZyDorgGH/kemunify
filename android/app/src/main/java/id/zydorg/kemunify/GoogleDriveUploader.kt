@@ -24,7 +24,6 @@ import java.util.Collections
 class GoogleDriveUploader(private val context: Context) {
     private var fileId = ""
     private val userPreferencesDataStore = UserPreferences.getInstance(context.userDataStore)
-    private val FOLDER_NAME = "Rekap Sampah Bank Kemuning"
 
     suspend fun uploadFileToDrive(file: File) {
         withContext(Dispatchers.IO) {
@@ -46,7 +45,7 @@ class GoogleDriveUploader(private val context: Context) {
                     myCredential
                 ).setApplicationName("Kemunify").build()
 
-                val folderId = getOrCreateFolder(driveService, FOLDER_NAME)
+                val folderId = getOrCreateFolder(driveService)
 
                 val fileMetadata = com.google.api.services.drive.model.File().apply {
                     name = file.name
@@ -79,8 +78,9 @@ class GoogleDriveUploader(private val context: Context) {
         }
     }
 
-    private fun getOrCreateFolder(driveService: Drive, folderName: String): String {
+    private fun getOrCreateFolder(driveService: Drive): String {
         return try {
+            val folderName = "Rekap Sampah Bank Kemuning"
             val query = "name = '$folderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
             val result: FileList = driveService.files().list()
                 .setQ(query)

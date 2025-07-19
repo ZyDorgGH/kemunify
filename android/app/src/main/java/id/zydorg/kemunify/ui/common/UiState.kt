@@ -9,11 +9,3 @@ sealed class UiState<out T: Any?> {
 
     data class Error(val errorMessage: String) : UiState<Nothing>()
 }
-
-
-
-data class GoogleSignInState(
-    val isSignedIn: Boolean = false,
-    val email: String? = null,
-    val displayName: String? = null
-)
