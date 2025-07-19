@@ -1,17 +1,32 @@
 package id.zydorg.kemunify.data.repository
 
+import android.content.Context
+import android.util.Log
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.GetCredentialResponse
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import id.zydorg.kemunify.data.database.CustomerEntity
 import id.zydorg.kemunify.data.database.KemunifyDatabase
 import id.zydorg.kemunify.data.database.WasteEntity
+import id.zydorg.kemunify.data.model.User
+import id.zydorg.kemunify.data.preference.UserPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.security.MessageDigest
+import java.util.UUID
 
 class DefaultKemunifyRepository(
-    private val database: KemunifyDatabase
+    private val database: KemunifyDatabase,
+    private val userPreferences: UserPreferences
 ) : KemunifyRepository {
     override suspend fun insertWaste(waste: WasteEntity) {
         database.wasteDao().insert(waste)
@@ -79,6 +94,83 @@ class DefaultKemunifyRepository(
             database.wasteDao().update(
                 waste.copy(weightsJson = "{}")
             )
+        }
+    }
+
+    override suspend fun signInWithGoogle(
+        context: Context,
+        credential: CredentialManager
+    ): Flow<User> {
+        return flow {
+            try {
+                val rawNonce = UUID.randomUUID().toString()
+                val bytes = rawNonce.toByteArray()
+                val md = MessageDigest.getInstance("SHA-256")
+                val digest = md.digest(bytes)
+                val hashedNonce = digest.fold("") { str, it -> str + "%02x".format(it) }
+
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId("225718562840-rker96c90cnt52llmv6qcs04ogfokpui.apps.googleusercontent.com")
+                    .setAutoSelectEnabled(true)
+                    .setNonce(hashedNonce)
+                    .build()
+
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+
+                val result = credential.getCredential(
+                    request = request,
+                    context = context
+                )
+
+                val user = handleSignIn(result)
+
+                if (user != null) {
+                    userPreferences.saveUserSession(user)
+                    emit(user)
+                } else {
+                    throw Exception("Credential is not a valid Google ID Token")
+                }
+
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Google Sign-In failed", e)
+                throw e
+            }
+        }
+    }
+
+    override fun handleSignIn(result: GetCredentialResponse): User? {
+        return when (val credential = result.credential) {
+
+            is CustomCredential -> {
+                if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    try {
+                        val googleIdTokenCredential = GoogleIdTokenCredential
+                            .createFrom(credential.data)
+
+                        val personId = googleIdTokenCredential.id
+                        val displayName = googleIdTokenCredential.displayName
+                        val personPhoto = googleIdTokenCredential.profilePictureUri
+
+                        return User(
+                            fullName = displayName.toString(),
+                            email = personId,
+                            profile = personPhoto.toString(),
+                            isLogin = true
+                        )
+                    } catch (e: GoogleIdTokenParsingException) {
+                        Log.e("AuthRepository", "Invalid Google ID token", e)
+                        null
+                    }
+                } else null
+            }
+
+            else -> {
+                Log.e("AuthRepository", "Unexpected credential type: ${credential::class.java}")
+                null
+            }
         }
     }
 }

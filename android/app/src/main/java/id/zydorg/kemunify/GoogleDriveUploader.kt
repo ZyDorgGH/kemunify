@@ -4,7 +4,6 @@ import android.accounts.Account
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -12,7 +11,8 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.FileList
-import id.zydorg.kemunify.data.preference.Preference.userDataStore
+import id.zydorg.kemunify.data.preference.UserPreferences
+import id.zydorg.kemunify.data.preference.userDataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -23,7 +23,7 @@ import java.util.Collections
 
 class GoogleDriveUploader(private val context: Context) {
     private var fileId = ""
-    private val userPreferencesDataStore = context.userDataStore
+    private val userPreferencesDataStore = UserPreferences.getInstance(context.userDataStore)
     private val FOLDER_NAME = "Rekap Sampah Bank Kemuning"
 
     suspend fun uploadFileToDrive(file: File) {
@@ -34,10 +34,9 @@ class GoogleDriveUploader(private val context: Context) {
                     Collections.singleton(DriveScopes.DRIVE_FILE)
                 )
 
-                val email = userPreferencesDataStore.data
-                    .map { prefs ->
-                        prefs[stringPreferencesKey("email")]
-                    }.firstOrNull()
+                val email = userPreferencesDataStore.getUserSession()
+                    .map { it.email }
+                    .firstOrNull()
 
                 myCredential.selectedAccount = email?.let { Account(it, "com.google") }
 

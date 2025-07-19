@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -54,6 +55,7 @@ import id.zydorg.kemunify.MainApplication
 import id.zydorg.kemunify.data.converter.toBigDecimalOrZero
 import id.zydorg.kemunify.data.database.WasteEntity
 import id.zydorg.kemunify.data.factory.ViewModelFactory
+import id.zydorg.kemunify.ui.common.UiState
 import id.zydorg.kemunify.ui.theme.WhiteSmoke
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -69,11 +71,38 @@ fun DetailScreen(
         factory = ViewModelFactory(MainApplication.injection)
     ),
 ) {
-    val wasteState by viewModel.wasteUiState.collectAsState()
     var expanded by remember { mutableStateOf(false) }
     var expandedListMore by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     var customerToDelete by remember { mutableStateOf<String?>(null) }
+    var wasteData by remember { mutableStateOf<List<WasteEntity>>(emptyList()) }
+
+    viewModel.wasteUiState.collectAsState(initial = UiState.Loading).value.let { uiState ->
+        when (uiState) {
+            is UiState.Loading -> {
+                viewModel.fetchWaste()
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is UiState.Success -> {
+                wasteData = uiState.data
+            }
+
+            is UiState.Error -> {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "Gagal Memuat Data", color = Color.DarkGray)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -132,8 +161,8 @@ fun DetailScreen(
                 .padding(innerPadding)
                 .fillMaxWidth()
         ) {
-            val totalWeight = remember(wasteState.wastes, customerId) {
-                wasteState.wastes.fold(BigDecimal.ZERO) { acc, waste ->
+            val totalWeight = remember(wasteData, customerId) {
+                wasteData.fold(BigDecimal.ZERO) { acc, waste ->
                     val weights = Gson().fromJson<Map<String, String>>(
                         waste.weightsJson,
                         object : TypeToken<Map<String, String>>() {}.type
@@ -148,7 +177,7 @@ fun DetailScreen(
                 }.setScale(2, RoundingMode.HALF_UP)
             }
 
-            DetailContent(wastes = wasteState.wastes, customerName = customerId)
+            DetailContent(wastes = wasteData, customerName = customerId)
 
             Text(
                 "Total Berat Sampah: $totalWeight kg",

@@ -2,7 +2,6 @@ package id.zydorg.kemunify
 
 import android.net.Uri
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -23,6 +22,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -33,27 +35,30 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.ui.navigation.Screen
 import id.zydorg.kemunify.ui.screen.camera.CameraScreen
 import id.zydorg.kemunify.ui.screen.detail.DetailScreen
 import id.zydorg.kemunify.ui.screen.detection.ImageDetectionScreen
 import id.zydorg.kemunify.ui.screen.home.HomeScreen
+import id.zydorg.kemunify.ui.screen.login.LoginScreen
 import id.zydorg.kemunify.ui.screen.profile.ProfileScreen
 import id.zydorg.kemunify.ui.screen.waste.AddWasteScreen
 import id.zydorg.kemunify.ui.theme.DarkGreen
 import id.zydorg.kemunify.ui.theme.LightGreen40
 import id.zydorg.kemunify.ui.theme.LightGreen80
 
-@RequiresApi(Build.VERSION_CODES.Q)
 
 @Composable
 fun KemunifyApp (
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    user: User,
 
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    var userData by remember { mutableStateOf(user) }
 
 
     Scaffold (
@@ -71,7 +76,12 @@ fun KemunifyApp (
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination =
+            if (userData.isLogin) {
+                Screen.Home.route
+            } else {
+                Screen.Login.route
+            },
             enterTransition = {
                 slideInHorizontally(initialOffsetX = { 1000 }) + fadeIn()
             },
@@ -108,14 +118,24 @@ fun KemunifyApp (
                 )
             }
             composable(
+                route = Screen.Login.route
+            ){
+                LoginScreen(
+                    navigateToHome = {navController.navigate(Screen.Home.route)}
+                )
+            }
+            composable(
                 route = Screen.Home.route
             ){
-                HomeScreen(
-                    navigateToDetail = { customer ->
-                    navController.navigate(Screen.DetailCustomer.createRoute(customer))
-                },
-                    navigateToAddWaste = {navController.navigate(Screen.AddWaste.route)}
-                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    HomeScreen(
+                        navigateToDetail = { customer ->
+                        navController.navigate(Screen.DetailCustomer.createRoute(customer))
+                    },
+                        navigateToAddWaste = {navController.navigate(Screen.AddWaste.route)},
+                        onLogout = {navController.navigate(Screen.Login.route)}
+                    )
+                }
             }
 
             composable(
@@ -126,7 +146,7 @@ fun KemunifyApp (
                 DetailScreen(
                     customerId = customerId,
                     navigateBack = {navController.popBackStack()}
-                    )
+                )
             }
             composable(
                 route = Screen.AddWaste.route
@@ -137,7 +157,10 @@ fun KemunifyApp (
             composable(
                 route = Screen.Profile.route
             ){
-                ProfileScreen()
+                ProfileScreen(
+                    onLogout = {navController.navigate(Screen.Login.route)},
+                    onBackClick = { navController.popBackStack() }
+                    )
             }
         }
     }

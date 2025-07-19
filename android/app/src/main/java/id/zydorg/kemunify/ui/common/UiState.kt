@@ -1,11 +1,15 @@
 package id.zydorg.kemunify.ui.common
 
-import id.zydorg.kemunify.data.database.CustomerEntity
-import id.zydorg.kemunify.data.database.WasteEntity
 
-data class WasteUiState(val wastes: List<WasteEntity> = listOf()){}
+sealed class UiState<out T: Any?> {
 
-data class CustomerUiState(val customer: List<CustomerEntity> = listOf()){}
+    object Loading : UiState<Nothing>()
+
+    data class Success<out T: Any>(val data: T) : UiState<T>()
+
+    data class Error(val errorMessage: String) : UiState<Nothing>()
+}
+
 
 
 data class GoogleSignInState(

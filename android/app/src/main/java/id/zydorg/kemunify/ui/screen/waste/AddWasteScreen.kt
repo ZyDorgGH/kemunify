@@ -2,9 +2,11 @@ package id.zydorg.kemunify.ui.screen.waste
 
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -37,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,7 +50,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import id.zydorg.kemunify.MainApplication
 import id.zydorg.kemunify.data.converter.isWeightValidDecimal
 import id.zydorg.kemunify.data.converter.toWeightBigDecimalOrZero
+import id.zydorg.kemunify.data.database.WasteEntity
 import id.zydorg.kemunify.data.factory.ViewModelFactory
+import id.zydorg.kemunify.ui.common.UiState
 import id.zydorg.kemunify.ui.theme.DarkGreen
 import id.zydorg.kemunify.ui.theme.LightGreen40
 import kotlinx.coroutines.launch
@@ -61,17 +68,47 @@ fun AddWasteScreen(
         factory = ViewModelFactory(MainApplication.injection)
     ),
 ){
-    val allWaste by viewModel.wasteUiState.collectAsState()
 
     var customerName by remember { mutableStateOf("") }
     val weights = remember { mutableStateMapOf<String, String>() }
     val weightErrors = remember { mutableStateMapOf<String, String>() }
     val coroutineScope = rememberCoroutineScope()
+    var wasteData by remember { mutableStateOf<List<WasteEntity>>(emptyList()) }
+    val context = LocalContext.current
 
-    val wasteTypes = allWaste.wastes.map { it.wasteName }
+    viewModel.wasteUiState.collectAsState(initial = UiState.Loading).value.let { uiState ->
+        when (uiState) {
+            is UiState.Loading -> {
+                viewModel.fetchWaste()
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is UiState.Success -> {
+                wasteData = uiState.data
+            }
+
+            is UiState.Error -> {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "Gagal Memuat Data", color = Color.DarkGray)
+                }
+            }
+        }
+    }
+
+    val wasteTypes = wasteData.map { it.wasteName }
     LaunchedEffect(wasteTypes) {
-        wasteTypes.forEach { wasteType ->
-            weights[wasteType] = "0.00"
+        if (wasteTypes.isNotEmpty()){
+            wasteTypes.forEach { wasteType ->
+                weights[wasteType] = "0.00"
+            }
         }
     }
 
@@ -202,7 +239,8 @@ fun AddWasteScreen(
                             viewModel.addCustomerWithWeights(
                                 name = customerName,
                                 weights = bigDecimalWeights,
-                                date = formattedTime
+                                date = formattedTime,
+                                context = context
                             )
                             Log.e("Weights", "Error initializing weights: $weights")
                         }

@@ -1,10 +1,8 @@
 package id.zydorg.kemunify.ui.screen.home
 
 import android.Manifest
-import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,7 +25,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Login
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
@@ -50,7 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,10 +64,12 @@ import androidx.core.content.ContextCompat
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.identity.Identity
 import id.zydorg.kemunify.GoogleDriveUploader
 import id.zydorg.kemunify.MainApplication
+import id.zydorg.kemunify.data.database.CustomerEntity
 import id.zydorg.kemunify.data.factory.ViewModelFactory
+import id.zydorg.kemunify.data.model.User
+import id.zydorg.kemunify.ui.common.UiState
 import id.zydorg.kemunify.ui.theme.DarkGreen
 import id.zydorg.kemunify.ui.theme.LightGreen40
 import id.zydorg.kemunify.ui.theme.WhiteSmoke
@@ -88,18 +86,19 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(
         factory = ViewModelFactory(MainApplication.injection)
     ),
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
-    val customerState by viewModel.customerUiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     var isCircularIndicatorShowing by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteAllDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var customerToDelete by remember { mutableStateOf<String?>(null) }
-    var userEmail by remember { mutableStateOf<String?>(null) }
     var expandedActionMenu by remember { mutableStateOf(false) }
-    var expandedListMore by remember { mutableStateOf(false) }
+    var customerState by remember { mutableStateOf<List<CustomerEntity>>(emptyList()) }
+    var userState by remember { mutableStateOf(User("", "","", isLogin = false)) }
 
     val requestStoragePermission = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -121,33 +120,61 @@ fun HomeScreen(
         }
     }
 
-    val authorizationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null){
-            val authorizationResult = Identity.getAuthorizationClient(context)
-                .getAuthorizationResultFromIntent(result.data!!)
-
-            Toast.makeText(context, "Permission Granted first", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Permission failed", Toast.LENGTH_SHORT).show()
-        }
-
-    }
-
-    LaunchedEffect(Unit) {
-        userEmail = viewModel.getData("email")
-    }
-
-    LaunchedEffect(userEmail) {
-        if (!userEmail.isNullOrEmpty()) {
-            Log.d("userEmail", "userEmail: $userEmail")
-            viewModel.requestDriveAuthorization(context, authorizationLauncher)
-        }
-    }
-
     val credentialManager = CredentialManager.create(context)
 
+    viewModel.customerUiState.collectAsState(initial = UiState.Loading).value.let { uiState ->
+        when (uiState) {
+            is UiState.Loading -> {
+                viewModel.fetchCustomer()
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is UiState.Success -> {
+                customerState = uiState.data
+            }
+
+            is UiState.Error -> {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "Gagal Memuat Data", color = Color.DarkGray)
+                }
+            }
+        }
+    }
+
+    viewModel.userUiState.collectAsState(initial = UiState.Loading).value.let { uiState ->
+        when (uiState) {
+            is UiState.Loading -> {
+                viewModel.fetchUser()
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is UiState.Success -> {
+                userState = uiState.data
+            }
+
+            is UiState.Error -> {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "Gagal Memuat Data", color = Color.DarkGray)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -171,10 +198,12 @@ fun HomeScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        DropdownMenu(expanded = expandedActionMenu, onDismissRequest = { expandedActionMenu = false }) {
+                        DropdownMenu(
+                            expanded = expandedActionMenu,
+                            onDismissRequest = { expandedActionMenu = false }) {
                             DropdownMenuItem(
                                 text = { Text("Share & Upload Excel") },
-                                enabled = customerState.customer.isNotEmpty(),
+                                enabled = customerState.isNotEmpty(),
                                 onClick = {
                                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                                         when (PackageManager.PERMISSION_GRANTED) {
@@ -190,6 +219,7 @@ fun HomeScreen(
                                                     isCircularIndicatorShowing = false
                                                 }
                                             }
+
                                             else -> {
                                                 requestStoragePermission.launch(
                                                     Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -211,7 +241,11 @@ fun HomeScreen(
                                         if (file != null) {
                                             GoogleDriveUploader(context).uploadFileToDrive(file)
                                         } else {
-                                            Toast.makeText(context, "Export failed", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                "Export failed",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 },
@@ -223,33 +257,9 @@ fun HomeScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Login") },
-                                onClick = {
-                                    viewModel.signInWithGoogle(
-                                        context = context,
-                                        credentialManager = credentialManager,
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Outlined.Login,
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-                            DropdownMenuItem(
                                 text = { Text("Log Out", color = Color.Red) },
                                 onClick = {
-                                    coroutineScope.launch {
-                                        viewModel.deleteData()
-                                        val request = ClearCredentialStateRequest()
-                                        credentialManager.clearCredentialState(request)
-                                        Toast.makeText(
-                                            context,
-                                            "Logout success",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
+                                    showLogoutDialog = true
                                 },
                                 leadingIcon = {
                                     Icon(
@@ -312,7 +322,7 @@ fun HomeScreen(
             Row(
                 modifier = Modifier.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
-            ){
+            ) {
                 Icon(
                     Icons.Outlined.Person,
                     tint = Color.Gray,
@@ -331,15 +341,17 @@ fun HomeScreen(
             LazyColumn(
                 horizontalAlignment = Alignment.Start
             ) {
-                itemsIndexed(customerState.customer) { index, customer ->
+                itemsIndexed(customerState) { index, customer ->
+
+                    var expandedListMore by remember { mutableStateOf(false) }
 
                     val backgroundColor = if (index % 2 == 0) {
                         WhiteSmoke.copy(alpha = 0.7f)
                     } else {
-                        MaterialTheme.colorScheme.secondary
+                        Color.White
                     }
 
-                    Row (
+                    Row(
                         modifier = Modifier
                             .background(backgroundColor)
                             .fillMaxWidth()
@@ -348,7 +360,7 @@ fun HomeScreen(
                                 navigateToDetail(customer.customerName)
                             },
                         verticalAlignment = Alignment.CenterVertically
-                    ){
+                    ) {
                         Icon(
                             Icons.Outlined.DateRange,
                             tint = Color.Black,
@@ -358,9 +370,11 @@ fun HomeScreen(
                             contentDescription = "Rekap"
                         )
 
-                        Column(modifier = Modifier
-                            .weight(8f)
-                            .padding(8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(8f)
+                                .padding(8.dp)
+                        ) {
                             Text(
                                 "Rekap Data ${customer.customerName}",
                                 style = MaterialTheme.typography.titleMedium,
@@ -387,9 +401,16 @@ fun HomeScreen(
                                     tint = Color.DarkGray,
                                 )
                             }
-                            DropdownMenu(expanded = expandedListMore, onDismissRequest = { expandedListMore = false }) {
+                            DropdownMenu(
+                                expanded = expandedListMore,
+                                onDismissRequest = { expandedListMore = false }) {
                                 DropdownMenuItem(
-                                    text = { Text("Hapus Tabel ${customer.customerName}", color = Color.Red) },
+                                    text = {
+                                        Text(
+                                            "Hapus Tabel ${customer.customerName}",
+                                            color = Color.Red
+                                        )
+                                    },
                                     onClick = {
                                         expanded = true
                                     },
@@ -437,6 +458,42 @@ fun HomeScreen(
         )
     }
 
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Logout") },
+            text = { Text("Apakah Anda yakin ingin logout?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            viewModel.logout()
+                            val request = ClearCredentialStateRequest()
+                            credentialManager.clearCredentialState(request)
+                            Toast.makeText(
+                                context,
+                                "Logout success",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Logout")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showLogoutDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
     if (expanded) {
         AlertDialog(
             onDismissRequest = { expanded = false },
@@ -445,7 +502,7 @@ fun HomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (customerToDelete != null){
+                        if (customerToDelete != null) {
                             coroutineScope.launch {
                                 viewModel.deleteCustomer(customerToDelete!!)
                             }

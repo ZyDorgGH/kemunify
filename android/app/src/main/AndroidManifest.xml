@@ -34,7 +34,7 @@
         <activity
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Kemunify"
+            android:theme="@style/Theme.Kemunify.Starting"
             android:name="id.zydorg.kemunify.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

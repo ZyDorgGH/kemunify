@@ -8,43 +8,22 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.IntentSenderRequest
 import androidx.core.content.FileProvider
-import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetCredentialResponse
-import androidx.credentials.PasswordCredential
-import androidx.credentials.PublicKeyCredential
-import androidx.credentials.exceptions.GetCredentialException
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.Scope
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
-import com.google.api.services.drive.DriveScopes
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import id.zydorg.kemunify.data.database.CustomerEntity
 import id.zydorg.kemunify.data.database.WasteEntity
+import id.zydorg.kemunify.data.model.User
+import id.zydorg.kemunify.data.preference.UserPreferences
 import id.zydorg.kemunify.data.repository.KemunifyRepository
-import id.zydorg.kemunify.ui.common.CustomerUiState
-import id.zydorg.kemunify.ui.screen.waste.WasteViewModel
+import id.zydorg.kemunify.ui.common.UiState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.apache.poi.ss.usermodel.BorderStyle
@@ -60,39 +39,57 @@ import org.apache.poi.ss.usermodel.Workbook
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.io.FileOutputStream
-import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 class HomeViewModel(
     private val wasteRepository: KemunifyRepository,
-    private val userPreferencesDataStore: DataStore<Preferences>
+    private val userPreferences: UserPreferences,
 ): ViewModel() {
 
-    val customerUiState : StateFlow<CustomerUiState> =
-        wasteRepository.getAllCustomer()
-            .map { CustomerUiState(it) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(WasteViewModel.MILLIS),
-                initialValue = CustomerUiState()
-            )
 
-    suspend fun updateWaste(waste: WasteEntity){
+    private val _customerUiState: MutableStateFlow<UiState<List<CustomerEntity>>> =
+        MutableStateFlow(UiState.Loading)
+    val customerUiState: StateFlow<UiState<List<CustomerEntity>>>
+        get() = _customerUiState
+
+    private val _userUiState: MutableStateFlow<UiState<User>> =
+        MutableStateFlow(UiState.Loading)
+    val userUiState: StateFlow<UiState<User>>
+        get() = _userUiState
+
+    fun fetchCustomer(){
         viewModelScope.launch {
-            wasteRepository.updateWaste(waste)
+            wasteRepository.getAllCustomer()
+                .catch {e ->
+                    _customerUiState.value = UiState.Error(e.message.toString())
+                }
+                .collect{customer ->
+                    _customerUiState.value = UiState.Success(customer)
+                }
         }
     }
 
-    suspend fun deleteCustomer(customer: String){
+    fun fetchUser(){
+        viewModelScope.launch {
+            userPreferences.getUserSession()
+                .catch {e ->
+                    _userUiState.value = UiState.Error(e.message.toString())
+                }
+                .collect{user ->
+                    _userUiState.value = UiState.Success(user)
+                }
+        }
+    }
+
+    fun deleteCustomer(customer: String){
         viewModelScope.launch {
             wasteRepository.delete(customer)
         }
     }
 
-    suspend fun deleteAllCustomers(){
+    fun deleteAllCustomers(){
         viewModelScope.launch {
             wasteRepository.deleteAllCustomers()
         }
@@ -279,133 +276,10 @@ class HomeViewModel(
         }
     }
 
-    fun signInWithGoogle(context: Context, credentialManager: CredentialManager) {
-        val rawNonce = UUID.randomUUID().toString()
-        val bytes = rawNonce.toByteArray()
-        val md = MessageDigest.getInstance("SHA-256")
-        val digest = md.digest(bytes)
-        val hashedNonce = digest.fold(""){str,it -> str +"%02x".format(it)}
-
-        val googleIdOption = GetGoogleIdOption.Builder()
-            .setFilterByAuthorizedAccounts(false)
-            .setServerClientId("225718562840-rker96c90cnt52llmv6qcs04ogfokpui.apps.googleusercontent.com")
-            .setAutoSelectEnabled(true)
-            .setNonce(hashedNonce)
-            .build()
-
-        val request = GetCredentialRequest.Builder()
-            .addCredentialOption(googleIdOption)
-            .build()
-
+    fun logout() {
         viewModelScope.launch {
-            try {
-                val result = credentialManager.getCredential(
-                    request = request,
-                    context = context
-                )
-                handleSignIn(result)
-            } catch (e: GetCredentialException){
-                Log.e("Credential Error", "Error getting credential", e)
-            }
+            userPreferences.logout()
         }
     }
 
-
-    private fun handleSignIn(result: GetCredentialResponse){
-        when(val credential = result.credential){
-
-            is PublicKeyCredential -> {
-                val responseJson = credential.authenticationResponseJson
-            }
-            // Password Credential
-            is PasswordCredential -> {
-                val username = credential.id
-                val password = credential.password
-            }
-
-            //GoogleToken credential
-            is CustomCredential -> {
-                if(credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL){
-                    try {
-
-                        val googleIdTokenCredential = GoogleIdTokenCredential
-                            .createFrom(credential.data)
-                        val googleIdToken = googleIdTokenCredential.idToken
-                        Log.i("answer", googleIdToken)
-                        val personId = googleIdTokenCredential.id
-                        Log.i("answer", personId)
-                        val displayName = googleIdTokenCredential.displayName
-                        Log.i("answer", displayName.toString())
-                        val personPhoto = googleIdTokenCredential.profilePictureUri
-                        Log.i("answer", personPhoto.toString())
-                        viewModelScope.launch {
-                            saveData("email", personId)
-                        }
-
-                    } catch (e: GoogleIdTokenParsingException) {
-                        Log.e("Error Token", "Received an invalid google id token response", e)
-                    }
-                } else {
-                    Log.e("Error Credential Type", "Unexpected type of credential")
-                }
-            }
-            else ->{
-                Log.e("Error Credential Type", "Unexpected type of credential")
-            }
-        }
-    }
-
-    fun requestDriveAuthorization(
-        context: Context,
-        authorizationLauncher: ActivityResultLauncher<IntentSenderRequest>
-    ) {
-        val requestedScopes = listOf(Scope(DriveScopes.DRIVE_FILE))
-        val authorizationRequest =
-            AuthorizationRequest.builder()
-                .setRequestedScopes(requestedScopes)
-                .build()
-
-        Identity.getAuthorizationClient(context)
-            .authorize(authorizationRequest)
-            .addOnSuccessListener{
-                Log.d("DriveAuth", "Authorization success. Has resolution? ${it.hasResolution()}")
-                if(it.hasResolution()){
-                    val pendingIntent = it.pendingIntent
-                    val intentSenderRequest = pendingIntent?.intentSender?.let { it1 ->
-                        IntentSenderRequest.Builder(
-                            it1
-                        ).build()
-                    }
-                    intentSenderRequest?.let { it1 -> authorizationLauncher.launch(it1) }
-
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Accses already granted",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }.addOnFailureListener { Toast.makeText(context, "Failure: ${it.message}", Toast.LENGTH_SHORT).show() }
-    }
-
-    private suspend fun saveData(key: String, text: String){
-        userPreferencesDataStore.edit { preferences ->
-            preferences[stringPreferencesKey(key)] = text
-        }
-    }
-
-    suspend fun deleteData(){
-        userPreferencesDataStore.edit { preferences ->
-            preferences.clear()
-        }
-    }
-
-    suspend fun getData(key: String): String? {
-        val value = userPreferencesDataStore.data
-            .map {
-                it[stringPreferencesKey(key)]
-            }.firstOrNull()
-
-        return value
-    }
 }

@@ -1,7 +1,11 @@
 package id.zydorg.kemunify.data.repository
 
+import android.content.Context
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialResponse
 import id.zydorg.kemunify.data.database.CustomerEntity
 import id.zydorg.kemunify.data.database.WasteEntity
+import id.zydorg.kemunify.data.model.User
 import kotlinx.coroutines.flow.Flow
 import java.math.BigDecimal
 
@@ -23,4 +27,8 @@ interface KemunifyRepository {
     suspend fun delete(customerName: String)
 
     suspend fun deleteAllCustomers()
+
+    suspend fun signInWithGoogle(context: Context, credential: CredentialManager): Flow<User>
+
+    fun handleSignIn(result: GetCredentialResponse): User?
 }
