@@ -6,7 +6,6 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Share
@@ -58,16 +58,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import id.zydorg.kemunify.GoogleDriveUploader
-import id.zydorg.kemunify.MainApplication
 import id.zydorg.kemunify.data.database.CustomerEntity
-import id.zydorg.kemunify.data.factory.ViewModelFactory
 import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.ui.common.UiState
 import id.zydorg.kemunify.ui.theme.DarkGreen
@@ -76,17 +76,14 @@ import id.zydorg.kemunify.ui.theme.WhiteSmoke
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
-@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navigateToDetail: (String) -> Unit,
     navigateToAddWaste: () -> Unit,
-    viewModel: HomeViewModel = viewModel(
-        factory = ViewModelFactory(MainApplication.injection)
-    ),
-    onLogout: () -> Unit
+    navigateToEditWaste: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -127,7 +124,7 @@ fun HomeScreen(
             is UiState.Loading -> {
                 viewModel.fetchCustomer()
                 Box(
-                    Modifier.fillMaxSize(),
+                    Modifier,
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -140,7 +137,7 @@ fun HomeScreen(
 
             is UiState.Error -> {
                 Box(
-                    Modifier.fillMaxSize(),
+                    Modifier,
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "Gagal Memuat Data", color = Color.DarkGray)
@@ -154,7 +151,7 @@ fun HomeScreen(
             is UiState.Loading -> {
                 viewModel.fetchUser()
                 Box(
-                    Modifier.fillMaxSize(),
+                    Modifier,
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -167,7 +164,7 @@ fun HomeScreen(
 
             is UiState.Error -> {
                 Box(
-                    Modifier.fillMaxSize(),
+                    Modifier,
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "Gagal Memuat Data", color = Color.DarkGray)
@@ -190,17 +187,36 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.secondary
                 ),
                 actions = {
-                    Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
-                        IconButton(onClick = { expandedActionMenu = true }) {
+                    Box(modifier = Modifier
+                        .wrapContentSize(Alignment.TopEnd)) {
+                        IconButton(
+                            modifier = Modifier.semantics { contentDescription = "Menu Anomali" },
+                            onClick = { expandedActionMenu = true },
+
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Menu,
-                                contentDescription = "Menu Home",
+                                contentDescription = "Menu",
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
                         DropdownMenu(
                             expanded = expandedActionMenu,
                             onDismissRequest = { expandedActionMenu = false }) {
+
+                            DropdownMenuItem(
+                                text = { Text("Edit List Jenis Sampah") },
+                                enabled = customerState.isNotEmpty(),
+                                onClick = {
+                                    navigateToEditWaste()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Outlined.List,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("Share & Upload Excel") },
                                 enabled = customerState.isNotEmpty(),
@@ -293,12 +309,13 @@ fun HomeScreen(
                 containerColor = LightGreen40,
                 contentColor = DarkGreen,
                 onClick = { navigateToAddWaste() },
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp).semantics { contentDescription = "add waste" }
             ) {
                 Icon(Icons.Default.Add, "Tambah Nasabah")
             }
 
-        }
+        },
+        modifier = Modifier
     ) { innerPadding ->
         Column(
             modifier = Modifier

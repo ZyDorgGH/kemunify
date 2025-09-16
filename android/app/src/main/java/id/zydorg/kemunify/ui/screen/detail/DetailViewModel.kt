@@ -2,6 +2,7 @@ package id.zydorg.kemunify.ui.screen.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import id.zydorg.kemunify.data.database.WasteEntity
 import id.zydorg.kemunify.data.repository.KemunifyRepository
 import id.zydorg.kemunify.ui.common.UiState
@@ -10,8 +11,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import javax.inject.Inject
 
-class DetailViewModel(
+@HiltViewModel
+class DetailViewModel @Inject constructor (
     private val wasteRepository: KemunifyRepository
 ): ViewModel() {
 

@@ -24,8 +24,11 @@ interface WasteDao {
     @Query("SELECT * FROM waste_table")
     fun getAllWaste(): Flow<List<WasteEntity>>
 
-    @Query("DELETE FROM waste_table WHERE id = :id")
-    suspend fun delete(id: Int)
+    @Query("UPDATE waste_table SET wasteName = :newName WHERE wasteName = :oldName")
+    suspend fun updateWasteName(oldName: String, newName: String)
+
+    @Query("DELETE FROM waste_table WHERE wasteName = :wasteName")
+    suspend fun delete(wasteName: String)
 
 }
 

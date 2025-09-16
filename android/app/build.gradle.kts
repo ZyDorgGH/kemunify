@@ -4,6 +4,9 @@ plugins {
     id ("com.google.devtools.ksp")
     id ("kotlin-parcelize")
     id ("kotlin-android")
+    kotlin("kapt")
+    id ("com.google.dagger.hilt.android")
+
 }
 
 android {
@@ -18,7 +21,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "id.zydorg.kemunify.HiltTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -40,12 +43,21 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    kapt {
+        correctErrorTypes = true
+    }
+
+    hilt {
+        enableTransformForLocalTests = true
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.7"
     }
     packaging {
         resources {
@@ -69,6 +81,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.rules)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -88,6 +101,13 @@ dependencies {
     implementation("androidx.room:room-runtime:2.5.2")
     implementation("androidx.room:room-ktx:2.5.2")
     ksp("androidx.room:room-compiler:2.5.2")
+
+    //hilt
+    implementation("com.google.dagger:hilt-android:2.49")
+    kapt("com.google.dagger:hilt-android-compiler:2.49")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
+
 
     //excel exporter
     implementation("org.apache.poi:poi:5.2.3")
@@ -126,7 +146,21 @@ dependencies {
     implementation ("androidx.core:core-splashscreen:1.0.1")
 
     //testing
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation ("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.1")
     testImplementation ("org.mockito:mockito-inline:4.4.0")
     testImplementation ("org.mockito.kotlin:mockito-kotlin:4.0.0")
+
+    androidTestImplementation ("org.mockito:mockito-android:4.4.0")
+    androidTestImplementation ("org.mockito.kotlin:mockito-kotlin:4.0.0")
+    androidTestImplementation ("androidx.navigation:navigation-testing:2.6.0")
+    androidTestImplementation("androidx.arch.core:core-testing:2.2.0")
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.50")
+    kaptAndroidTest("com.google.dagger:hilt-compiler:2.50")
+
+    implementation ("androidx.test:core-ktx:1.4.0")
+
+
+
+
 }

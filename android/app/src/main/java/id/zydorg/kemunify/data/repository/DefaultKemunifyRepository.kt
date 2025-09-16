@@ -23,8 +23,9 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.security.MessageDigest
 import java.util.UUID
+import javax.inject.Inject
 
-class DefaultKemunifyRepository(
+class DefaultKemunifyRepository @Inject constructor (
     private val database: KemunifyDatabase,
     private val userPreferences: UserPreferences
 ) : KemunifyRepository {
@@ -57,8 +58,61 @@ class DefaultKemunifyRepository(
 
     override fun getAllWaste(): Flow<List<WasteEntity>> = database.wasteDao().getAllWaste()
 
-    override suspend fun deleteWaste(id: Int) {
-        database.wasteDao().delete(id)
+    override suspend fun deleteWaste(wasteName: String) {
+        database.wasteDao().delete(wasteName)
+    }
+
+    override suspend fun updateWasteName(newWaste: String, oldName: String) {
+        database.wasteDao().updateWasteName(oldName = oldName, newName = newWaste)
+    }
+
+    override suspend fun insertWasteName(wasteName: String) {
+        val wasteEntity = WasteEntity(
+            wasteName = wasteName,
+            weightsJson = "{}" // JSON kosong
+        )
+        database.wasteDao().insert(wasteEntity)
+    }
+    override suspend fun initWasteDataIfEmpty() {
+        val existingWaste = database.wasteDao().getAllWaste().first()
+        if (existingWaste.isEmpty()){
+            val wasteTypes = listOf(
+                "Gelas bersih",
+                "Botol bersih",
+                "Plastik rongsok",
+                "Kardus",
+                "Kardus rongsok",
+                "Kertas Putih",
+                "Buku",
+                "Kaleng aluminium/pocari",
+                "Kaleng rongsok",
+                "Aluminium/panci",
+                "Besi",
+                "kaca bening",
+                "kaca warna",
+                "Tutup botol kecil",
+                "Tutup botol galon",
+                "bubblewarp",
+                "galon aqua",
+                "galon lemineral",
+                "plastik bening",
+                "thinwall",
+                "besi kopong",
+                "karung",
+                "CD / toples akrilik",
+                "baterai",
+                "setrika",
+                "kawat"
+            )
+
+            wasteTypes.forEach { wasteName ->
+                val wasteEntity = WasteEntity(
+                    wasteName = wasteName,
+                    weightsJson = "{}" // JSON kosong
+                )
+                database.wasteDao().insert(wasteEntity)
+            }
+        }
     }
 
     override suspend fun insertCustomer(customer: CustomerEntity) {

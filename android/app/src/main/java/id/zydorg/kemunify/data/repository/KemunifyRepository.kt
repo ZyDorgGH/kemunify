@@ -18,7 +18,13 @@ interface KemunifyRepository {
 
     fun getAllWaste(): Flow<List<WasteEntity>>
 
-    suspend fun deleteWaste(id: Int)
+    suspend fun deleteWaste(wasteName: String)
+
+    suspend fun updateWasteName(newWaste: String, oldName: String)
+
+    suspend fun insertWasteName(wasteName: String)
+
+    suspend fun initWasteDataIfEmpty()
 
     suspend fun insertCustomer(customer: CustomerEntity)
 

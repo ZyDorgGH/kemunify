@@ -26,12 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.viewmodel.compose.viewModel
-import id.zydorg.kemunify.data.factory.ViewModelFactory
+import androidx.hilt.navigation.compose.hiltViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.ui.common.UiState
 import id.zydorg.kemunify.ui.theme.KemunifyTheme
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher =
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Permission request granted", Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(this, "Permission request denied", Toast.LENGTH_LONG).show()
+                finish()
             }
         }
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -57,9 +59,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val viewModel: MainActivityViewModel = viewModel(
-                        factory = ViewModelFactory(MainApplication.injection)
-                    )
+                    val viewModel: MainActivityViewModel = hiltViewModel()
                     val context = LocalContext.current
                     var userState by remember { mutableStateOf(User("", "","", isLogin = false)) }
                     viewModel.userUiState.collectAsState(initial = UiState.Loading).value.let { uiState ->

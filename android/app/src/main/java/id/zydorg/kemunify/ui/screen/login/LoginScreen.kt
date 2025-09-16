@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AlignVerticalBottom
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,25 +31,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.android.gms.auth.api.identity.Identity
-import id.zydorg.kemunify.MainApplication
 import id.zydorg.kemunify.R
-import id.zydorg.kemunify.data.factory.ViewModelFactory
 import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.ui.common.UiState
 
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
-    viewModel: LoginViewModel = viewModel(
-        factory = ViewModelFactory(MainApplication.injection)
-    ),
+    viewModel: LoginViewModel = hiltViewModel(),
     navigateToHome: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -86,11 +81,6 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(userState.isLogin) {
-        if (userState.isLogin) {
-            navigateToHome()
-        }
-    }
     val authorizationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -121,6 +111,7 @@ fun LoginScreen(
                     "Gagal meminta izin Google Drive: $e",
                     Toast.LENGTH_LONG
                 ).show()
+                navigateToHome()
             }
 
         }
@@ -139,7 +130,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             Image(
-                imageVector = Icons.Default.AlignVerticalBottom,
+                painter = painterResource(id = R.drawable.kemuning_logo),
                 contentDescription = "App Logo",
                 modifier = Modifier.size(120.dp)
             )
@@ -163,7 +154,9 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(40.dp))
             GoogleLoginButton(
                 context = context,
-                credentialManager = credentialManager
+                credentialManager = credentialManager,
+                navigateToHome = {navigateToHome()},
+                isLogin = userState.isLogin
             )
 
             Spacer(modifier = Modifier.weight(0.5f))
@@ -174,17 +167,21 @@ fun LoginScreen(
 @Composable
 fun GoogleLoginButton(
     context: Context,
-    viewModel: LoginViewModel = viewModel(
-        factory = ViewModelFactory(MainApplication.injection)
-    ),
+    viewModel: LoginViewModel = hiltViewModel(),
     credentialManager: CredentialManager,
+    navigateToHome: () -> Unit,
+    isLogin: Boolean
 ) {
     Button(
         onClick = {
-            viewModel.signInWithGoogle(
-                context = context,
-                credentialManager = credentialManager,
-            )
+            if (isLogin){
+                Toast.makeText(context, "Sudah Login", Toast.LENGTH_SHORT).show()
+            } else {
+                viewModel.signInWithGoogle(
+                    context = context,
+                    credentialManager = credentialManager,
+                )
+            }
         },
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.White,
@@ -194,7 +191,10 @@ fun GoogleLoginButton(
             defaultElevation = 4.dp,
             pressedElevation = 8.dp
         ),
-        modifier = Modifier.fillMaxWidth(0.8f)
+        modifier = Modifier
+            .fillMaxWidth(0.8f)
+            .testTag("Login Button")
+        ,
     ) {
         Image(
             painter = painterResource(id = R.drawable.ic_google_logo),

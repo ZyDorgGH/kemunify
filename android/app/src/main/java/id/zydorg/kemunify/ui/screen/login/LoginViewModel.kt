@@ -12,6 +12,7 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
+import dagger.hilt.android.lifecycle.HiltViewModel
 import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.data.preference.UserPreferences
 import id.zydorg.kemunify.data.repository.KemunifyRepository
@@ -20,8 +21,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class LoginViewModel(
+@HiltViewModel
+class LoginViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
     private val kemunifyRepository: KemunifyRepository
 ) :ViewModel() {
@@ -50,6 +53,7 @@ class LoginViewModel(
                     _userUiState.value = UiState.Error(e.message.toString())
                 }
                 .collect{user ->
+                    Log.d("Login","Viemodel terpanggil")
                     _userUiState.value = UiState.Success(user)
                 }
         }

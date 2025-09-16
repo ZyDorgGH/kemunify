@@ -45,10 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import id.zydorg.kemunify.MainApplication
-import id.zydorg.kemunify.data.factory.ViewModelFactory
 import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.ui.common.UiState
 import kotlinx.coroutines.launch
@@ -58,9 +56,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit,
-    viewModel: ProfileViewModel = viewModel(
-        factory = ViewModelFactory(MainApplication.injection)
-    ),
+    viewModel: ProfileViewModel = hiltViewModel(),
     onLogout: () -> Unit
 
 ) {

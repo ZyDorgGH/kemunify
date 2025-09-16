@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.lifecycle.HiltViewModel
 import id.zydorg.kemunify.data.database.CustomerEntity
 import id.zydorg.kemunify.data.database.WasteEntity
 import id.zydorg.kemunify.data.model.User
@@ -42,12 +43,17 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor (
     private val wasteRepository: KemunifyRepository,
     private val userPreferences: UserPreferences,
 ): ViewModel() {
 
+    init {
+        insertInitWaste()
+    }
 
     private val _customerUiState: MutableStateFlow<UiState<List<CustomerEntity>>> =
         MutableStateFlow(UiState.Loading)
@@ -83,6 +89,13 @@ class HomeViewModel(
         }
     }
 
+    fun insertInitWaste(){
+        viewModelScope.launch {
+            wasteRepository.initWasteDataIfEmpty()
+        }
+    }
+
+
     fun deleteCustomer(customer: String){
         viewModelScope.launch {
             wasteRepository.delete(customer)
@@ -105,7 +118,7 @@ class HomeViewModel(
 
             val formatter = SimpleDateFormat("dd-MM-yyyy_HH:mm:ss", Locale.getDefault())
             val formattedTime = formatter.format(Date())
-            val fileName = "rekap_sampah_$formattedTime.xlsx"
+            val fileName = "rekap_sampah_13-April-2025.xlsx"
             val file = File(folder, fileName)
 
             return try {

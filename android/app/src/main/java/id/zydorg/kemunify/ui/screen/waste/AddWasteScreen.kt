@@ -42,16 +42,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import id.zydorg.kemunify.MainApplication
+import androidx.hilt.navigation.compose.hiltViewModel
 import id.zydorg.kemunify.data.converter.isWeightValidDecimal
 import id.zydorg.kemunify.data.converter.toWeightBigDecimalOrZero
 import id.zydorg.kemunify.data.database.WasteEntity
-import id.zydorg.kemunify.data.factory.ViewModelFactory
 import id.zydorg.kemunify.ui.common.UiState
 import id.zydorg.kemunify.ui.theme.DarkGreen
 import id.zydorg.kemunify.ui.theme.LightGreen40
@@ -64,9 +65,7 @@ import java.util.Locale
 @Composable
 fun AddWasteScreen(
     onNavigateUp: () -> Unit,
-    viewModel: WasteViewModel = viewModel(
-        factory = ViewModelFactory(MainApplication.injection)
-    ),
+    viewModel: WasteViewModel =  hiltViewModel(),
 ){
 
     var customerName by remember { mutableStateOf("") }
@@ -151,7 +150,7 @@ fun AddWasteScreen(
                 label = { Text("Nama Nasabah") },
                 modifier = Modifier
                     .padding(top = 24.dp, start = 16.dp, end = 16.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth().semantics { contentDescription = "Input Customer" },
                 isError = customerName.isBlank()
             )
 
@@ -188,7 +187,7 @@ fun AddWasteScreen(
                                 weightErrors.remove(wasteType)
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).semantics { contentDescription = wasteType },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Next
@@ -228,7 +227,8 @@ fun AddWasteScreen(
                 FilledTonalButton(
                     modifier = Modifier
                         .padding(8.dp)
-                        .weight(1f, true),
+                        .weight(1f, true)
+                        .testTag("Save Button"),
                     onClick = {
                         val bigDecimalWeights = weights.mapValues { (_, value) ->
                             value.toWeightBigDecimalOrZero()

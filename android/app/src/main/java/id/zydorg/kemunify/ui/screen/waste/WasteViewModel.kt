@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.lifecycle.HiltViewModel
 import id.zydorg.kemunify.data.converter.Converters
 import id.zydorg.kemunify.data.database.CustomerEntity
 import id.zydorg.kemunify.data.database.WasteEntity
@@ -18,8 +19,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
+import javax.inject.Inject
 
-class WasteViewModel(
+@HiltViewModel
+class WasteViewModel @Inject constructor(
     private val wasteRepository: KemunifyRepository
 ): ViewModel() {
 
@@ -87,6 +90,31 @@ class WasteViewModel(
                     Toast.LENGTH_SHORT
                 ).show()
             }
+        }
+    }
+
+    fun updateWasteName(
+        wasteName: String,
+        newName: String
+    ) {
+        viewModelScope.launch {
+            wasteRepository.updateWasteName(oldName = wasteName, newWaste = newName)
+        }
+    }
+
+    fun insertNewWasteName(
+        wasteName: String,
+    ) {
+        viewModelScope.launch {
+            wasteRepository.insertWasteName(wasteName)
+        }
+    }
+
+    fun deleteWasteName(
+        wasteName: String,
+    ) {
+        viewModelScope.launch {
+            wasteRepository.deleteWaste(wasteName)
         }
     }
 }

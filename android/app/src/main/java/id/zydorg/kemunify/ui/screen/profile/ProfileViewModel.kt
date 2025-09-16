@@ -2,6 +2,7 @@ package id.zydorg.kemunify.ui.screen.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import id.zydorg.kemunify.data.model.User
 import id.zydorg.kemunify.data.preference.UserPreferences
 import id.zydorg.kemunify.ui.common.UiState
@@ -9,8 +10,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ProfileViewModel(
+@HiltViewModel
+class ProfileViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
 ): ViewModel() {
 
