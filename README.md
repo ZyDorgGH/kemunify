@@ -27,7 +27,7 @@ This is the app's flagship feature, using a **MobileNet CNN** model to intellige
 
 ## 🚀 Technology Stack
 
-* **Platform:** Android
+* **Platform:** Android Jetpack Compose
 * **Core Technology:** Convolutional Neural Network (CNN) with MobileNetV2
 * **Model:** MobileNet
 * **Authentication:** Google Sign-In
